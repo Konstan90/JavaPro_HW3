@@ -24,13 +24,12 @@ public class CustomThreadPool {
 
     public void execute(Runnable task) {
         if(isOff) throw new IllegalStateException();
-        tasksList.add(task);
+        else tasksList.add(task);
     }
 
     private void daemon() {
         Thread daemonThread = new Thread(()->{
             while (true) {
-                if(isOff) break;
                 for (int i=0;i<tasksList.size();i++)
                 {
                     for (CustomThread thread : threads) {
@@ -42,6 +41,7 @@ public class CustomThreadPool {
                     }
                 }
 
+                if(tasksList.size()==0 && isOff) break;
                 try {
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
@@ -56,8 +56,38 @@ public class CustomThreadPool {
 
     public void shutdown() {
         isOff = true;
+//        Если нужно перевести потоки в TERMINATED
+//        while (true){
+//            if(tasksList.size()==0){
+//                for (CustomThread thread : threads) {
+//                    thread.setOff(true);
+//                }
+//                dThread.interrupt();
+//            }
+//        }
+    }
+
+    public boolean awaitTermination() throws InterruptedException {
+        while (true){
+            if(tasksList.size()==0){ //Дожидаемся когда все задания будут выполнены
+                for (CustomThread thread : threads) {
+                    System.out.println("Останавливаю поток " + thread.getName());
+                    thread.setOff(true);
+                    while (true) {
+                        if(thread.getState() == Thread.State.TERMINATED) break;
+                    }
+                }
+                dThread.interrupt();
+                return true;
+            }
+            Thread.sleep(100);
+        }
+    }
+    public void printThreadStates() {
+        System.out.println("----------------");
+        System.out.println("Статусы потоков:");
         for (CustomThread thread : threads) {
-            thread.setOff(true);
+            System.out.println(thread.getName() + ": " + thread.getState());
         }
     }
 }
